@@ -1,0 +1,7 @@
+CC=gcc
+MAIN=shortest_path.c
+FCTN=mesh_functions.c
+IFLAGS = -I./
+
+all:
+	$(CC) $(MAIN) $(FCTN) $(IFLAGS) -o djikstra
