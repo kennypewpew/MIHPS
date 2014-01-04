@@ -2,7 +2,7 @@
 #include "stdio.h"
 #include "mesh_functions.h"
 
-int largeur = 100;
+int largeur = 20;
 
 // Generate a circle obstacle
 // centre is passed as int[2] - centre[0]-> x, centre[1]-> y
@@ -71,4 +71,36 @@ void save_dist(double* dist) {
       fprintf(out, "%f\n", dist[j + largeur*i]);
     } // end for j: -> columns
   } // end for i: \/ rows
+  fclose(out);
+}
+
+
+
+void save_path(double* dist, pt arrivee, pt* path) {
+  FILE *out = fopen("path.vtk", "w");
+  int i, j;
+
+  fprintf(out, "# vtk DataFile Version 3.0\n");
+  fprintf(out, "Shortest path through distance table\n");
+  fprintf(out, "ASCII\n");
+  fprintf(out, "DATASET UNSTRUCTURED_GRID\n\n");
+
+  fprintf(out, "POINTS %d float\n", (int)dist[arrivee]);
+  for ( i = 0 ; i < dist[arrivee] ; i++ ) {
+    fprintf(out, "%d %d %d\n", path[i]%largeur, path[i]/largeur, 0);
+  }
+  fprintf(out, "\n");
+
+  fprintf(out, "CELLS 1 %d\n", (int)dist[arrivee]);
+  fprintf(out, "%d ", (int)dist[arrivee]);
+  for ( i = 0 ; i < dist[arrivee] ; i++ ) {
+    fprintf(out, "%d ", i);
+  }
+  fprintf(out, "\n");
+  fprintf(out, "\n");
+
+  fprintf(out, "CELL_TYPES 1\n");
+  fprintf(out, "4\n");
+
+  fclose(out);
 }

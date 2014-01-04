@@ -3,7 +3,7 @@
 #include "mesh_functions.h"
 
 typedef int pt;		//point
-int _largeur = 100;
+int _largeur = 20;
 
 // Create mesh, initialise all values to 1
 double* init_tab_mesh(){
@@ -30,31 +30,30 @@ void obstacle(double* mesh){
 	int i;
 	int demi = _largeur/2;
 	for(i =0; i<demi+1; i++)
-		mesh[demi + i*_largeur] = 0;
+		mesh[demi + i*_largeur] = -1;
 	for(i = demi+demi*_largeur ; i < demi*_largeur + _largeur-3 ; i++ ) {
-	  mesh[i] = 0;
+	  mesh[i] = -1;
 	}
 } 
 
 // Add neighbors to search priority queue
 // Returns number of neighbors
 // DOES NOT CHECK IF NEIGHBOR IS OPEN TO SEARCH(doesn't currently affect problem)
-int find_voisin(pt current, pt* voisin){
+int find_voisin(pt current, pt* voisin, double* mesh){
 	int y = current/_largeur;
 	int x = current%_largeur;
 	int i = 0;
-	if(y != 0)	voisin[i++] = current-_largeur;
-	if(x != 0)	voisin[i++] = current-1;
-	if(x != _largeur -1) voisin[i++] = current+1;
-	if(x != _largeur -1) voisin[i++] = current+_largeur;
-	/* Should probably set rest of array to 0, just to be safe */
+	if(y != 0 && mesh[current-_largeur] != -1)	voisin[i++] = current-_largeur;
+	if(x != 0 && mesh[current-1] != -1)	voisin[i++] = current-1;
+	if(x != _largeur -1 && mesh[current+1] != -1) voisin[i++] = current+1;
+	if(y != _largeur -1 && mesh[current+_largeur] != -1) voisin[i++] = current+_largeur;
+	// Should probably set rest of array to 0, just to be safe
 	int j;
 	for ( j = i+1 ; j < 4 ; j++ ) { voisin[j] = 0; }
 	return i;
 }
 
 // Create and fill/calculate distance table
-// Stops upon reaching destination (ok for this problem, not generalizable)
 double* tab_distance(double* mesh, pt depart, pt arrivee){
         int i;
 	int fin = _largeur*_largeur;
@@ -67,17 +66,16 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 	pt voisin[4]; // Array containing list of neighbors
 	int n_voisin; // Number of valid neighbors to check
 	while(a_traiter <= n_liste){ /* Changed while to treat whole domain */
-		n_voisin = find_voisin(current, voisin);
+		n_voisin = find_voisin(current, voisin, mesh);
+		
 		for(i=0; i<n_voisin; i++)
 		        // If not obstacle && distance has not been checked yet,
 		        // set neighbor's distance to current's + 1,
 		        // add neighbors to search queue
-			if(mesh[voisin[i]] == 1. && dist[voisin[i]] ==-1){
+			if(dist[voisin[i]] ==-1){
 				dist[voisin[i]] = dist[current] + 1;
 				liste[n_liste++] = voisin[i];
-				/* on ne compare pas la distance 
-				    mais je ne pense pas que c'est grave
-				    pour ce probleme */
+				/* NO DISTANCE COMPARISON CHECK */
 			}
 		current = liste[a_traiter++]; // Increment position in list[]
 	}	
@@ -85,27 +83,90 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 	return dist;
 }
 
+//créé un tableau décrivant le plus court chemin à partir du tableau de distance à un point (de départ) et d'un point d'arrivée
+pt* court_chemin(double* dist, pt arrivee){
+	if(dist[arrivee] == -1)	//le point d'arrivee n'est pas accessible
+		return NULL;
+	int i = 0, j;
+	pt current = arrivee;									//on part de la fin
+	pt voisin[4];
+	pt voisin_dist_mini;
+	int n_voisin = 0;
+	int dist_arrivee = dist[arrivee];
+	pt* chemin = malloc((dist_arrivee)*sizeof(double));
+	while(dist[current] != 0){								//tant que le point de départ n'est pas atteint
+		n_voisin = find_voisin(current, voisin, dist);		//on cherche parmi les voisins celui qui a la distance minimum au point de départ
+		voisin_dist_mini = voisin[0];
+		for(j = 1; j<n_voisin; j++)
+			if(dist[voisin_dist_mini]>dist[voisin[j]])
+				voisin_dist_mini = voisin[j];
+		chemin[i++] = voisin_dist_mini;						//on l'ajoute à la liste
+		current = voisin_dist_mini;							//et on recommence à partir de celui là 
+	}
+	return chemin;
+}
+
+//créé un tableau décrivant le plus court chemin à partir du tableau de distance à un point (de départ) et d'un point d'arrivée
+//la fonction bis decris un chemin chemin aussi court mais en faisant autant de changement de direction que possible.
+//en le traçant et avec un maillage fin, il se raprochera visiellement plus du plus court chemin réel
+pt* court_chemin_bis(double* dist, pt arrivee){
+	if(dist[arrivee] == -1)	//le point d'arrivee n'est pas accessible
+		return NULL;
+	int i = 0, j;
+	int dir = 0;
+	pt current = arrivee;									//on part de la fin
+	pt voisin[4];
+	pt voisin_dist_mini;
+	int n_voisin = 0;
+	int dist_arrivee = dist[arrivee];
+	pt* chemin = malloc((dist_arrivee)*sizeof(double));
+	while(dist[current] != 0){								//tant que le point de départ n'est pas atteint
+		n_voisin = find_voisin(current, voisin, dist);		//on cherche parmi les voisins celui qui a la distance minimum au point de départ
+		if(dir++ == 0){										//la différence de la bis est d'alterner l'ordre de test des voisins
+			voisin_dist_mini = voisin[0];
+			for(j = 1; j<n_voisin; j++)
+				if(dist[voisin_dist_mini]>dist[voisin[j]])
+					voisin_dist_mini = voisin[j];
+			}
+		else{
+			voisin_dist_mini = voisin[n_voisin-1];
+			for(j = n_voisin-2; j>=0; j--)
+				if(dist[voisin_dist_mini]>dist[voisin[j]])
+					voisin_dist_mini = voisin[j];
+			dir = 0;
+			}
+		chemin[i++] = voisin_dist_mini;						//on l'ajoute à la liste
+		current = voisin_dist_mini;							//et on recommence à partir de celui là 
+	}
+	return chemin;
+}
+
+
 int main(){
 	int i;
 	pt debut = 0;
-	pt fin = _largeur*_largeur - 1;
+	pt fin = _largeur/2 +1;
 	double* mesh = init_tab_mesh();
 	obstacle(mesh);
-	double bottom_left[2] = { 8, 8 };
-	double top_right[2] = { 15, 15 };
-	double center[2] = { 30, 50 };
-	generate_rectangle(bottom_left, top_right, mesh);
-	generate_circle(center, 10, mesh);
-	double center2[2] = { 25, 58 };
-	generate_circle(center2, 10, mesh);
+	//double bottom_left[2] = { 10, 10 };
+	//double top_right[2] = { 15, 15 };
+	//generate_rectangle(bottom_left, top_right, mesh);
+
 	double* dist = tab_distance(mesh, debut, fin);
 	printf("\n");
-	//for(i=0; i<fin+1;i++){
-	//if(i%_largeur == 0)	printf("\n");
-	//printf("%d\t", (int)dist[i]);
-	//}	
+	for(i=0; i<_largeur*_largeur;i++){
+		if(i%_largeur == 0)	printf("\n");
+		printf("%d\t", (int)dist[i]);
+	}	
 	printf("\n");
-	save_dist(dist);
+        save_dist(dist);
+	
+	pt* chemin = court_chemin_bis(dist, fin);
+	save_path(dist, fin, chemin);
+	
+	printf("\n");
+	for(i=0; i< dist[fin]; i++)
+		printf("%d \t %d \n", chemin[i]/_largeur, chemin[i]%_largeur);
 
 	free(mesh);
 	free(dist);
