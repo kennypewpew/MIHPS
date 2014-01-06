@@ -40,7 +40,7 @@ void generate_rectangle(double *down_left, double *up_right, double *mesh) {
 
 // Saves distance array as vtk file
 void save_dist(double* dist) {
-  FILE *out = fopen("sample.vtk", "w");
+  FILE *out = fopen("distance.vtk", "w");
   int i, j;
 
   fprintf(out, "# vtk DataFile Version 3.0\n");
@@ -91,7 +91,7 @@ void save_path(double* dist, pt arrivee, pt* path) {
   }
   fprintf(out, "\n");
 
-  fprintf(out, "CELLS 1 %d\n", (int)dist[arrivee]);
+  fprintf(out, "CELLS 1 %d\n", (int)dist[arrivee]+1);
   fprintf(out, "%d ", (int)dist[arrivee]);
   for ( i = 0 ; i < dist[arrivee] ; i++ ) {
     fprintf(out, "%d ", i);
