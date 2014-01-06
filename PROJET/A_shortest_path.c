@@ -118,10 +118,11 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 	      pt candidates[4*diamond_size][2];
 	      int i_cand = 0;
 	      int min_cand = _largeur*_largeur;
-	      // right vertex -> bottom vertex
+	      /******** Start checking diamond **********/
+	      /* top vertex -> right vertex */
 	      for ( i = 0 ; i < diamond_size ; i++ ) {
-		int y = (current+i)/_largeur;
-		int x = current%_largeur + (diamond_size - i);
+		int y = (current+(diamond_size - i))/_largeur;
+		int x = current%_largeur + i;
 		// if not obstacle && distance already set(point open to search)
 		if ( mesh[x + _largeur * y] != -1 && dist[x + _largeur * y] != -1 ) {
 		  candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur) + (y-arrivee/_largeur)*(y-arrivee/_largeur);
@@ -131,15 +132,61 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 		  }
 		  i_cand++;
 		} // end if: point is valid
-	      } // end if: top right edge of diamond
-	      /* ...other edges... */
+	      } // end for: top right edge of diamond
+	      /* right vertex -> bottom vertex */
+	      for ( i = 0 ; i < diamond_size ; i++ ) {
+		int y = (current-i)/_largeur;
+		int x = current%_largeur - (diamond_size - i);
+		if ( mesh[x + _largeur * y] != -1 && dist[x + _largeur * y] != -1 ) {
+		  candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur) + (y-arrivee/_largeur)*(y-arrivee/_largeur);
+		  candidates[i_cand][1] = x + y*_largeur;
+		  if ( candidates[i_cand][0] < min_cand ) {
+		    min_cand = candidates[i_cand][0];
+		  }
+		  i_cand++;
+		} // end if: point is valid
+	      } // end if: bottom right edge of diamond
+	      /* bottom vertex -> left vertex */
+	      for ( i = 0 ; i < diamond_size ; i++ ) {
+		int y = (depart-(diamond_size-i))/_largeur;
+		int x = depart%_largeur - i;
+		// if not obstacle && distance already set(point open to search)
+		if ( mesh[x + _largeur * y] != -1 && dist[x + _largeur * y] != -1 ) {
+		  candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur) + (y-arrivee/_largeur)*(y-arrivee/_largeur);
+		  candidates[i_cand][1] = x + y*_largeur;
+		  if ( candidates[i_cand][0] < min_cand ) {
+		    min_cand = candidates[i_cand][0];
+		  }
+		  i_cand++;
+		} // end if: point is valid
+	      } // end if: bottom left edge of diamond
+	      /* left vertex -> top vertex */
+	      for ( i = 0 ; i < diamond_size ; i++ ) {
+		int y = (current+i)/_largeur;
+		int x = current%_largeur - (diamond_size - i);
+		// if not obstacle && distance already set(point open to search)
+		if ( mesh[x + _largeur * y] != -1 && dist[x + _largeur * y] != -1 ) {
+		  candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur) + (y-arrivee/_largeur)*(y-arrivee/_largeur);
+		  candidates[i_cand][1] = x + y*_largeur;
+		  if ( candidates[i_cand][0] < min_cand ) {
+		    min_cand = candidates[i_cand][0];
+		  }
+		  i_cand++;
+		} // end if: point is valid
+	      } // end if: top left edge of diamond
+	      /******** End checking diamond **********/
+
+	      /* Add points closest to arrivee */
 	      for ( i = 0 ; i < 4*diamond_size ; i++ ) {
-		/* add to list */
 		if ( min_cand == candidates[i][0] ) {
-		  liste[a_traiter++] = candidates[i][1];
+		  liste[n_liste++] = candidates[i][1];
 		} // end if: closest candidate
-	      } // end for: add neighbors to liste[a_traiter++]
+		/* Enlarge diamond if edge point is used */
+		if ( candidates[i][1]/_largeur - depart/_largeur + candidates[i][1]%_largeur - depart%_largeur == diamond_size ) { diamond_size++;}
+	      } // end for: add neighbors to list
+
 	    } // end if: n_voisins == 0
+
 	} // end while: table not completed
 	free(liste);
 	return dist;
@@ -209,10 +256,10 @@ int main(){
 	pt debut = 0;
 	pt fin = _largeur/2 +1;
 	double* mesh = init_tab_mesh();
-	obstacle(mesh);
-	double bottom_left[2] = { 5, 5 };
-	double top_right[2] = { 10, 10 };
-	generate_rectangle(bottom_left, top_right, mesh);
+	//obstacle(mesh);
+	//double bottom_left[2] = { 5, 5 };
+	//double top_right[2] = { 10, 10 };
+	//generate_rectangle(bottom_left, top_right, mesh);
 
 	double* dist = A_tab_distance(mesh, debut, fin);
         save_dist(dist);
