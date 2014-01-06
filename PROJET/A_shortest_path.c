@@ -54,6 +54,7 @@ int find_voisin(pt current, pt* voisin, double* mesh){
 }
 
 // Add neighbors using A* algorithm
+// On ajoute que les voisins qui sont les plus proches(ignorant les obstacles) a la liste de voisins a visiter. Les autres seront ajouté a la liste plus tard par un autre chemin.
 int A_find_voisin(pt current, pt* voisin, double* mesh, pt arrivee){
 	int y = current/_largeur;
 	int x = current%_largeur;
@@ -88,6 +89,8 @@ int A_find_voisin(pt current, pt* voisin, double* mesh, pt arrivee){
 }
 
 // Create and fill/calculate distance table
+// Si A_find_voisin trouve des voisins valide, on fait comme avant pour les explorer.
+// S'il n'y a pas de voisins valide, on recommence l'exploration autour du point de debut en regardant les diamands de point autour ce point
 double* A_tab_distance(double* mesh, pt depart, pt arrivee){
         int i;
 	int fin = _largeur*_largeur;
@@ -100,7 +103,7 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 	pt voisin[4]; // Array containing list of neighbors
 	int n_voisin; // Number of valid neighbors to check
 	while(a_traiter <= n_liste){ 
-	  int diamond_size = 1;
+	  int max_diamond_size = 1;
 	  n_voisin = A_find_voisin(current, voisin, mesh, arrivee);
 	    if ( n_voisin != 0 ) {
 		for(i=0; i<n_voisin; i++)
@@ -115,66 +118,75 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 		current = liste[a_traiter++]; // Increment position in list[]
 	    }
 	    else{ /* add point near origin */ 
-	      pt candidates[4*diamond_size][2];
+	      int array_size = 0;
+	      int diamond_size;
+	      for ( diamond_size = 1 ; diamond_size <= max_diamond_size ; diamond_size++ ) { array_size += diamond_size; }
+	      pt candidates[4*array_size][2];
 	      int i_cand = 0;
 	      int min_cand = _largeur*_largeur;
-	      /******** Start checking diamond **********/
-	      /* top vertex -> right vertex */
-	      for ( i = 0 ; i < diamond_size ; i++ ) {
-		int y = (current+(diamond_size - i))/_largeur;
-		int x = current%_largeur + i;
-		// if not obstacle && distance already set(point open to search)
-		if ( mesh[x + _largeur * y] != -1 && dist[x + _largeur * y] != -1 ) {
-		  candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur) + (y-arrivee/_largeur)*(y-arrivee/_largeur);
-		  candidates[i_cand][1] = x + y*_largeur;
-		  if ( candidates[i_cand][0] < min_cand ) {
-		    min_cand = candidates[i_cand][0];
-		  }
-		  i_cand++;
-		} // end if: point is valid
-	      } // end for: top right edge of diamond
-	      /* right vertex -> bottom vertex */
-	      for ( i = 0 ; i < diamond_size ; i++ ) {
-		int y = (current-i)/_largeur;
-		int x = current%_largeur - (diamond_size - i);
-		if ( mesh[x + _largeur * y] != -1 && dist[x + _largeur * y] != -1 ) {
-		  candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur) + (y-arrivee/_largeur)*(y-arrivee/_largeur);
-		  candidates[i_cand][1] = x + y*_largeur;
-		  if ( candidates[i_cand][0] < min_cand ) {
-		    min_cand = candidates[i_cand][0];
-		  }
-		  i_cand++;
-		} // end if: point is valid
-	      } // end if: bottom right edge of diamond
-	      /* bottom vertex -> left vertex */
-	      for ( i = 0 ; i < diamond_size ; i++ ) {
-		int y = (depart-(diamond_size-i))/_largeur;
-		int x = depart%_largeur - i;
-		// if not obstacle && distance already set(point open to search)
-		if ( mesh[x + _largeur * y] != -1 && dist[x + _largeur * y] != -1 ) {
-		  candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur) + (y-arrivee/_largeur)*(y-arrivee/_largeur);
-		  candidates[i_cand][1] = x + y*_largeur;
-		  if ( candidates[i_cand][0] < min_cand ) {
-		    min_cand = candidates[i_cand][0];
-		  }
-		  i_cand++;
-		} // end if: point is valid
-	      } // end if: bottom left edge of diamond
-	      /* left vertex -> top vertex */
-	      for ( i = 0 ; i < diamond_size ; i++ ) {
-		int y = (current+i)/_largeur;
-		int x = current%_largeur - (diamond_size - i);
-		// if not obstacle && distance already set(point open to search)
-		if ( mesh[x + _largeur * y] != -1 && dist[x + _largeur * y] != -1 ) {
-		  candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur) + (y-arrivee/_largeur)*(y-arrivee/_largeur);
-		  candidates[i_cand][1] = x + y*_largeur;
-		  if ( candidates[i_cand][0] < min_cand ) {
-		    min_cand = candidates[i_cand][0];
-		  }
-		  i_cand++;
-		} // end if: point is valid
-	      } // end if: top left edge of diamond
-	      /******** End checking diamond **********/
+	      /******** Start checking diamonds **********/
+	      for ( diamond_size = 1 ; diamond_size <= max_diamond_size ; diamond_size++) {
+		/* top vertex -> right vertex */
+		for ( i = 0 ; i < diamond_size ; i++ ) {
+		  int y = (current+(diamond_size - i))/_largeur;
+		  int x = current%_largeur + i;
+		  // if not obstacle && distance already set(point open to search)
+		  /*******************************************************
+               need to add to this if: set but neighbors unexplored (??need is_open table??)
+		   ***************************************************/
+		  if ( mesh[x + _largeur * y] != -1 && dist[x + _largeur * y] != -1 ) {
+		    candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur) + (y-arrivee/_largeur)*(y-arrivee/_largeur);
+		    candidates[i_cand][1] = x + y*_largeur;
+		    if ( candidates[i_cand][0] < min_cand ) {
+		      min_cand = candidates[i_cand][0];
+		    }
+		    i_cand++;
+		  } // end if: point is valid
+		} // end for: top right edge of diamond
+		/* right vertex -> bottom vertex */
+		for ( i = 0 ; i < diamond_size ; i++ ) {
+		  int y = (current-i)/_largeur;
+		  int x = current%_largeur - (diamond_size - i);
+		  if ( mesh[x + _largeur * y] != -1 && dist[x + _largeur * y] != -1 ) {
+		    candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur) + (y-arrivee/_largeur)*(y-arrivee/_largeur);
+		    candidates[i_cand][1] = x + y*_largeur;
+		    if ( candidates[i_cand][0] < min_cand ) {
+		      min_cand = candidates[i_cand][0];
+		    }
+		    i_cand++;
+		  } // end if: point is valid
+		} // end if: bottom right edge of diamond
+		/* bottom vertex -> left vertex */
+		for ( i = 0 ; i < diamond_size ; i++ ) {
+		  int y = (depart-(diamond_size-i))/_largeur;
+		  int x = depart%_largeur - i;
+		  // if not obstacle && distance already set(point open to search)
+		  if ( mesh[x + _largeur * y] != -1 && dist[x + _largeur * y] != -1 ) {
+		    candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur) + (y-arrivee/_largeur)*(y-arrivee/_largeur);
+		    candidates[i_cand][1] = x + y*_largeur;
+		    if ( candidates[i_cand][0] < min_cand ) {
+		      min_cand = candidates[i_cand][0];
+		    }
+		    i_cand++;
+		  } // end if: point is valid
+		} // end if: bottom left edge of diamond
+		/* left vertex -> top vertex */
+		for ( i = 0 ; i < diamond_size ; i++ ) {
+		  int y = (current+i)/_largeur;
+		  int x = current%_largeur - (diamond_size - i);
+		  // if not obstacle && distance already set(point open to search)
+		  if ( mesh[x + _largeur * y] != -1 && dist[x + _largeur * y] != -1 ) {
+		    candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur) + (y-arrivee/_largeur)*(y-arrivee/_largeur);
+		    candidates[i_cand][1] = x + y*_largeur;
+		    if ( candidates[i_cand][0] < min_cand ) {
+		      min_cand = candidates[i_cand][0];
+		    }
+		    i_cand++;
+		  } // end if: point is valid
+		} // end if: top left edge of diamond
+		diamond_size++;
+	      } // end for: diamond sizes
+	      /******** End checking diamonds **********/
 
 	      /* Add points closest to arrivee */
 	      for ( i = 0 ; i < 4*diamond_size ; i++ ) {
@@ -182,7 +194,7 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 		  liste[n_liste++] = candidates[i][1];
 		} // end if: closest candidate
 		/* Enlarge diamond if edge point is used */
-		if ( candidates[i][1]/_largeur - depart/_largeur + candidates[i][1]%_largeur - depart%_largeur == diamond_size ) { diamond_size++;}
+		if ( candidates[i][1]/_largeur - depart/_largeur + candidates[i][1]%_largeur - depart%_largeur == max_diamond_size ) { max_diamond_size++;}
 	      } // end for: add neighbors to list
 
 	    } // end if: n_voisins == 0
