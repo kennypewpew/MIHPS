@@ -60,6 +60,7 @@ int A_find_voisin(pt current, pt* voisin, double* mesh, pt arrivee){
 	int y = current/_largeur;
 	int x = current%_largeur;
 	int i = 0;
+	printf("Point %d, %d\n", x, y);
 	// add valid neighbors (not edge && not obstacle)
 	if(y != 0 && mesh[current-_largeur] != -1)	voisin[i++] = current-_largeur;
 	if(x != 0 && mesh[current-1] != -1)	voisin[i++] = current-1;
@@ -71,8 +72,6 @@ int A_find_voisin(pt current, pt* voisin, double* mesh, pt arrivee){
 	/**** Begin A* specific section ****/
 	int yy = arrivee/_largeur;
 	int xx = arrivee%_largeur;
-	printf("For %d, %d\n", x, y);
-	printf("First: %d\n", i);
 
 	// calculate distance from each valid neighbor to endpoint
 	int min_dist = (x-xx)*(x-xx) + (y-yy)*(y-yy); // only want to add points closer than current
@@ -87,7 +86,6 @@ int A_find_voisin(pt current, pt* voisin, double* mesh, pt arrivee){
 	    } // end if: calculate distance to closest neighbor
 	} // end for: calculate min_dist
 
-	printf("Second: %d\n", i);
 	// invalidate neighbors which are not closer than current point
 	for ( j = i-1 ; j >= 0 ; j-- ) {
 	  if ( ( voisin[j]/_largeur - yy)*( voisin[j]/_largeur - yy)
@@ -100,7 +98,6 @@ int A_find_voisin(pt current, pt* voisin, double* mesh, pt arrivee){
 	    i--;
 	  } // end if: neighbor is closer than current
 	} // end for: remove neighbors from list
-	printf("Third: %d\n", i);
 	return i;
 }
 
@@ -120,9 +117,9 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 	int n_voisin; // Number of valid neighbors to check
 	int max_diamond_size = 1;
 	//n_voisin = A_find_voisin(3+3*_largeur, voisin, mesh, arrivee);
-	while(a_traiter <= n_liste){ 
+	//while(a_traiter <= n_liste){ 
 	int l;
-	//for ( l = 0 ; l < 30  ; l++ ) {
+	for ( l = 0 ; l < 30  ; l++ ) {
 	  n_voisin = A_find_voisin(current, voisin, mesh, arrivee);
 	    if ( n_voisin != 0 ) {
 	      //printf("%d  ", n_voisin);
@@ -130,7 +127,7 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 		        // If not obstacle && distance has not been checked yet,
 		        // set neighbor's distance to current's + 1,
 		        // add neighbors to search queue
-			if(dist[voisin[i]] ==-1){
+			if(dist[voisin[i]] == -1 ){
 				dist[voisin[i]] = dist[current] + 1;
 				liste[n_liste++] = voisin[i];
 				/* NO DISTANCE COMPARISON CHECK */
@@ -141,8 +138,8 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 		if(dist[voisin[i]] ==-1){ dist[voisin[i]] = dist[current] + 1; }
 	      }
 
-		mesh[current] = -1; // mark node as visited ( will not be revisited )
-		current = liste[a_traiter++]; // Increment position in list[]
+	      mesh[current] = -1; // mark node as visited ( will not be revisited )
+	      current = liste[a_traiter++]; // Increment position in list[]
 	    }
 	    else{ /* add point from a diamond centered on the origin */ 
 	      int array_size = 0;
@@ -158,82 +155,76 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 		  int y = depart/_largeur + diamond_size - i;
 		  int x = depart%_largeur + i;
 		  // if not obstacle && distance already set(point open to search) && not out of bounds
-		  /*******************************************************
-               need to add to this if: distance set but neighbors unexplored (??need is_open table??) (??set mesh of visited nodes to obstacle??)
-		   ***************************************************/
-		  if ( mesh[x + _largeur * y] != -1 && 
-		       dist[x + _largeur * y] != -1 && 
-		       x >= 0 && y >= 0 && x < _largeur && y < _largeur) {
-		    candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur)
-		                           +(y-arrivee/_largeur)*(y-arrivee/_largeur);
-		    candidates[i_cand][1] = x + y*_largeur;
-		    if ( candidates[i_cand][0] < min_cand ) {
-		      min_cand = candidates[i_cand][0];
-		    };
-		    i_cand++;
-		    printf("Candidate added\n");
-		  } // end if: point is valid
+		  if ( x >= 0 && y >= 0 && x < _largeur && y < _largeur) {
+		    if ( mesh[x + _largeur * y] != -1 && 
+			 dist[x + _largeur * y] != -1 ) {
+		      candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur)
+		                             +(y-arrivee/_largeur)*(y-arrivee/_largeur);
+		      candidates[i_cand][1] = x + y*_largeur;
+		      if ( candidates[i_cand][0] <= min_cand ) {
+			min_cand = candidates[i_cand][0];
+		      };
+		      i_cand++;
+		    } // end if: point is valid
+		  } // end if: in bounds
 		} // end for: top right edge of diamond
 		/* right vertex -> bottom vertex */
 		for ( i = 0 ; i < diamond_size ; i++ ) {
 		  int y = depart/_largeur - i;
 		  int x = depart%_largeur + (diamond_size - i);
-		  if ( mesh[x + _largeur * y] != -1 && 
-		       dist[x + _largeur * y] != -1 && 
-		       x >= 0 && y >= 0 && x < _largeur && y < _largeur) {
-		    candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur)
-		                           +(y-arrivee/_largeur)*(y-arrivee/_largeur);
-		    candidates[i_cand][1] = x + y*_largeur;
-		    if ( candidates[i_cand][0] < min_cand ) {
-		      min_cand = candidates[i_cand][0];
-		    }
+		  if ( x >= 0 && y >= 0 && x < _largeur && y < _largeur) {
+		    if ( mesh[x + _largeur * y] != -1 && 
+			 dist[x + _largeur * y] != -1 ) {
+		      candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur)
+			                     +(y-arrivee/_largeur)*(y-arrivee/_largeur);
+		      candidates[i_cand][1] = x + y*_largeur;
+		      if ( candidates[i_cand][0] <= min_cand ) {
+			min_cand = candidates[i_cand][0];
+		      }
 		    i_cand++;
-		    printf("Candidate added\n");
 		  } // end if: point is valid
+		  } // end if: point is in bounds
 		} // end if: bottom right edge of diamond
 		/* bottom vertex -> left vertex */
 		for ( i = 0 ; i < diamond_size ; i++ ) {
 		  int y = depart/_largeur - (diamond_size - i);
 		  int x = depart%_largeur - i;
-		  if ( mesh[x + _largeur * y] != -1 && 
-		       dist[x + _largeur * y] != -1 && 
-		       x >= 0 && y >= 0 && x < _largeur && y < _largeur) {
-		    candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur)
-		                           +(y-arrivee/_largeur)*(y-arrivee/_largeur);
-		    candidates[i_cand][1] = x + y*_largeur;
-		    if ( candidates[i_cand][0] < min_cand ) {
-		      min_cand = candidates[i_cand][0];
-		    }
-		    i_cand++;
-		    printf("Candidate added\n");
-		  } // end if: point is valid
+		  if ( x >= 0 && y >= 0 && x < _largeur && y < _largeur) {
+		    if ( mesh[x + _largeur * y] != -1 && 
+			 dist[x + _largeur * y] != -1 ) {
+		      candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur)
+			                     +(y-arrivee/_largeur)*(y-arrivee/_largeur);
+		      candidates[i_cand][1] = x + y*_largeur;
+		      if ( candidates[i_cand][0] <= min_cand ) {
+			min_cand = candidates[i_cand][0];
+		      }
+		      i_cand++;
+		    } // end if: point is valid
+		  } // end if: point is in bounds
 		} // end if: bottom left edge of diamond
 		/* left vertex -> top vertex */
 		for ( i = 0 ; i < diamond_size ; i++ ) {
-		  int y = depart/_largeur + 1;
+		  int y = depart/_largeur + i;
 		  int x = depart%_largeur - (diamond_size - i);
-		  if ( mesh[x + _largeur * y] != -1 && 
-		       dist[x + _largeur * y] != -1 && 
-		       x >= 0 && y >= 0 && x < _largeur && y < _largeur) {
-		    candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur)
-		                           +(y-arrivee/_largeur)*(y-arrivee/_largeur);
-		    candidates[i_cand][1] = x + y*_largeur;
-		    if ( candidates[i_cand][0] < min_cand ) {
-		      min_cand = candidates[i_cand][0];
-		    }
-		    i_cand++;
-		    printf("Candidate added\n");
-		  } // end if: point is valid
+		  if ( x >= 0 && y >= 0 && x < _largeur && y < _largeur) {
+		    if ( mesh[x + _largeur * y] != -1 && 
+			 dist[x + _largeur * y] != -1 ) {
+		      candidates[i_cand][0] = (x-arrivee%_largeur)*(x-arrivee%_largeur)
+		                             +(y-arrivee/_largeur)*(y-arrivee/_largeur);
+		      candidates[i_cand][1] = x + y*_largeur;
+		      if ( candidates[i_cand][0] <= min_cand ) {
+			min_cand = candidates[i_cand][0];
+		      }
+		      i_cand++;
+		    } // end if: point is valid
+		  } // end if: in bounds
 		} // end if: top left edge of diamond
 		diamond_size++;
 	      } // end for: diamond sizes
 	      /******** End checking diamonds **********/
 
 	      /* Add points closest to arrivee */
-	      printf("==================================\n");
-	      printf("Current Candidates: \n");
 	      for ( i = 0 ; i < i_cand ; i++ ) {
-		printf("%d, %d\n", candidates[i][1]%_largeur, candidates[i][1]/_largeur);
 		if ( min_cand == candidates[i][0] ) {
 		  liste[n_liste++] = candidates[i][1];
 		  /* Enlarge diamond if edge point is used */
@@ -312,7 +303,7 @@ pt* court_chemin_bis(double* dist, pt arrivee){
 
 int main(){
 	int i;
-	pt debut = 3*_largeur+3;
+	pt debut = 0;//3*_largeur+3;
 	pt fin = _largeur/2 +1;
 	double* mesh = init_tab_mesh();
 	//obstacle(mesh);
