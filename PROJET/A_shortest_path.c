@@ -56,10 +56,9 @@ int find_voisin(pt current, pt* voisin, double* mesh){
 // Add neighbors using A* algorithm
 // On ajoute que les voisins qui sont les plus proches(ignorant les obstacles) a la liste de voisins a visiter. Les autres seront ajouté a la liste plus tard par un autre chemin.
 int A_find_voisin(pt current, pt* voisin, double* mesh, pt arrivee){
+        /**** Same as find_voisin ****/
 	int y = current/_largeur;
 	int x = current%_largeur;
-	int yy = arrivee/_largeur;
-	int xx = arrivee%_largeur;
 	int i = 0;
 	// add valid neighbors (not edge && not obstacle)
 	if(y != 0 && mesh[current-_largeur] != -1)	voisin[i++] = current-_largeur;
@@ -68,6 +67,11 @@ int A_find_voisin(pt current, pt* voisin, double* mesh, pt arrivee){
 	if(y != _largeur -1 && mesh[current+_largeur] != -1) voisin[i++] = current+_largeur;
 	int j;
 	for ( j = i ; j < 4 ; j++ ) { voisin[j] = 0; }/* ??+1 necessary??*/
+
+	/**** Begin A* specific section ****/
+	int yy = arrivee/_largeur;
+	int xx = arrivee%_largeur;
+
 	// calculate distance from each valid neighbor to endpoint
 	int min_dist = (x-xx)*(x-xx) + (y-yy)*(y-yy); // only want to add points closer than current
 	for ( j = 0 ; j < i ; j++ ) { 
@@ -82,10 +86,10 @@ int A_find_voisin(pt current, pt* voisin, double* mesh, pt arrivee){
 	} // end for: calculate min_dist
 
 	// invalidate neighbors which are not closer than current point
-	for ( j = i ; j >= 0 ; j-- ) {
+	for ( j = i-1 ; j >= 0 ; j-- ) {
 	  if ( ( voisin[j]/_largeur - yy)*( voisin[j]/_largeur - yy)
 	       +( voisin[j]%_largeur - xx)*( voisin[j]%_largeur - xx)
-	       == min_dist ) {
+	       > min_dist ) {
 	    int k;
 	    for ( k = j ; k < 3 ; k++ ) {
 	      voisin[k] = voisin[k+1]; // squash value to be removed
@@ -114,6 +118,7 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 	while(a_traiter <= n_liste){ 
 	  n_voisin = A_find_voisin(current, voisin, mesh, arrivee);
 	    if ( n_voisin != 0 ) {
+	      printf("%d  ", n_voisin);
 		for(i=0; i<n_voisin; i++)
 		        // If not obstacle && distance has not been checked yet,
 		        // set neighbor's distance to current's + 1,
@@ -123,7 +128,7 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 				liste[n_liste++] = voisin[i];
 				/* NO DISTANCE COMPARISON CHECK */
 			}
-		//mesh[current] = -1; // mark node as visited - currently causes n_voisin = 0 for all iterations
+		mesh[current] = -1; // mark node as visited
 		current = liste[a_traiter++]; // Increment position in list[]
 	    }
 	    else{ /* add point from a diamond centered on the origin */ 
@@ -141,7 +146,7 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 		  int x = depart%_largeur + i;
 		  // if not obstacle && distance already set(point open to search) && not out of bounds
 		  /*******************************************************
-               need to add to this if: set but neighbors unexplored (??need is_open table??) (??set mesh of visited nodes to obstacle??)
+               need to add to this if: distance set but neighbors unexplored (??need is_open table??) (??set mesh of visited nodes to obstacle??)
 		   ***************************************************/
 		  if ( mesh[x + _largeur * y] != -1 && 
 		       dist[x + _largeur * y] != -1 && 
@@ -175,7 +180,6 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 		for ( i = 0 ; i < diamond_size ; i++ ) {
 		  int y = depart/_largeur - (diamond_size - i);
 		  int x = depart%_largeur - i;
-		  // if not obstacle && distance already set(point open to search)
 		  if ( mesh[x + _largeur * y] != -1 && 
 		       dist[x + _largeur * y] != -1 && 
 		       x >= 0 && y >= 0 && x < _largeur && y < _largeur) {
@@ -192,7 +196,6 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 		for ( i = 0 ; i < diamond_size ; i++ ) {
 		  int y = depart/_largeur + 1;
 		  int x = depart%_largeur - (diamond_size - i);
-		  // if not obstacle && distance already set(point open to search)
 		  if ( mesh[x + _largeur * y] != -1 && 
 		       dist[x + _largeur * y] != -1 && 
 		       x >= 0 && y >= 0 && x < _largeur && y < _largeur) {
@@ -221,7 +224,7 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 	      } // end for: add neighbors to list
 	    } // end if: n_voisins == 0
 
-	} // end while: table not completed
+	} // end while: fill distance table
 	printf("%d nodes visited\n", n_liste);
 	free(liste);
 	return dist;
