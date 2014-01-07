@@ -66,11 +66,13 @@ int A_find_voisin(pt current, pt* voisin, double* mesh, pt arrivee){
 	if(x != _largeur -1 && mesh[current+1] != -1) voisin[i++] = current+1;
 	if(y != _largeur -1 && mesh[current+_largeur] != -1) voisin[i++] = current+_largeur;
 	int j;
-	for ( j = i ; j < 4 ; j++ ) { voisin[j] = 0; }/* ??+1 necessary??*/
+	for ( j = i ; j < 4 ; j++ ) { voisin[j] = 0; }
 
 	/**** Begin A* specific section ****/
 	int yy = arrivee/_largeur;
 	int xx = arrivee%_largeur;
+	printf("For %d, %d\n", x, y);
+	printf("First: %d\n", i);
 
 	// calculate distance from each valid neighbor to endpoint
 	int min_dist = (x-xx)*(x-xx) + (y-yy)*(y-yy); // only want to add points closer than current
@@ -85,6 +87,7 @@ int A_find_voisin(pt current, pt* voisin, double* mesh, pt arrivee){
 	    } // end if: calculate distance to closest neighbor
 	} // end for: calculate min_dist
 
+	printf("Second: %d\n", i);
 	// invalidate neighbors which are not closer than current point
 	for ( j = i-1 ; j >= 0 ; j-- ) {
 	  if ( ( voisin[j]/_largeur - yy)*( voisin[j]/_largeur - yy)
@@ -97,6 +100,7 @@ int A_find_voisin(pt current, pt* voisin, double* mesh, pt arrivee){
 	    i--;
 	  } // end if: neighbor is closer than current
 	} // end for: remove neighbors from list
+	printf("Third: %d\n", i);
 	return i;
 }
 
@@ -115,11 +119,14 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 	pt voisin[4]; // Array containing list of neighbors
 	int n_voisin; // Number of valid neighbors to check
 	int max_diamond_size = 1;
+	//n_voisin = A_find_voisin(3+3*_largeur, voisin, mesh, arrivee);
 	while(a_traiter <= n_liste){ 
+	int l;
+	//for ( l = 0 ; l < 30  ; l++ ) {
 	  n_voisin = A_find_voisin(current, voisin, mesh, arrivee);
 	    if ( n_voisin != 0 ) {
-	      printf("%d  ", n_voisin);
-		for(i=0; i<n_voisin; i++)
+	      //printf("%d  ", n_voisin);
+	      for(i=0; i<n_voisin; i++) {
 		        // If not obstacle && distance has not been checked yet,
 		        // set neighbor's distance to current's + 1,
 		        // add neighbors to search queue
@@ -128,7 +135,13 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 				liste[n_liste++] = voisin[i];
 				/* NO DISTANCE COMPARISON CHECK */
 			}
-		mesh[current] = -1; // mark node as visited
+	      }
+	      n_voisin = find_voisin(current, voisin, mesh);
+	      for(i=0; i<n_voisin; i++) {
+		if(dist[voisin[i]] ==-1){ dist[voisin[i]] = dist[current] + 1; }
+	      }
+
+		mesh[current] = -1; // mark node as visited ( will not be revisited )
 		current = liste[a_traiter++]; // Increment position in list[]
 	    }
 	    else{ /* add point from a diamond centered on the origin */ 
@@ -158,6 +171,7 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 		      min_cand = candidates[i_cand][0];
 		    };
 		    i_cand++;
+		    printf("Candidate added\n");
 		  } // end if: point is valid
 		} // end for: top right edge of diamond
 		/* right vertex -> bottom vertex */
@@ -174,6 +188,7 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 		      min_cand = candidates[i_cand][0];
 		    }
 		    i_cand++;
+		    printf("Candidate added\n");
 		  } // end if: point is valid
 		} // end if: bottom right edge of diamond
 		/* bottom vertex -> left vertex */
@@ -190,6 +205,7 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 		      min_cand = candidates[i_cand][0];
 		    }
 		    i_cand++;
+		    printf("Candidate added\n");
 		  } // end if: point is valid
 		} // end if: bottom left edge of diamond
 		/* left vertex -> top vertex */
@@ -206,6 +222,7 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 		      min_cand = candidates[i_cand][0];
 		    }
 		    i_cand++;
+		    printf("Candidate added\n");
 		  } // end if: point is valid
 		} // end if: top left edge of diamond
 		diamond_size++;
@@ -213,7 +230,10 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 	      /******** End checking diamonds **********/
 
 	      /* Add points closest to arrivee */
+	      printf("==================================\n");
+	      printf("Current Candidates: \n");
 	      for ( i = 0 ; i < i_cand ; i++ ) {
+		printf("%d, %d\n", candidates[i][1]%_largeur, candidates[i][1]/_largeur);
 		if ( min_cand == candidates[i][0] ) {
 		  liste[n_liste++] = candidates[i][1];
 		  /* Enlarge diamond if edge point is used */
@@ -222,6 +242,7 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 		       == max_diamond_size ) { max_diamond_size++;}
 		} // end if: closest candidate
 	      } // end for: add neighbors to list
+	      current = liste[a_traiter++];
 	    } // end if: n_voisins == 0
 
 	} // end while: fill distance table
