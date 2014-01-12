@@ -1,7 +1,11 @@
 CC=gcc
-MAIN=shortest_path.c
+MAIN=A_shortest_path.c
 FCTN=mesh_functions.c
-IFLAGS = -I./
+IFLAGS = -I./ -g
 
 all:
-	$(CC) $(MAIN) $(FCTN) $(IFLAGS) -o djikstra
+	$(CC) $(MAIN) $(FCTN) $(IFLAGS) -o A
+
+clean:
+	rm A
+	rm *.vtk

@@ -2,15 +2,15 @@
 #include "stdio.h"
 #include "mesh_functions.h"
 
-int largeur = 20;
+//int largeur = 20;
 
 // Generate a circle obstacle
 // centre is passed as int[2] - centre[0]-> x, centre[1]-> y
 void generate_circle(double *centre, int rayon, double *mesh) {
   int i;
-  for ( i = 0 ; i < largeur*largeur ; i++ ) {
-    int x = i%largeur;
-    int y = i/largeur;
+  for ( i = 0 ; i < _largeur*_largeur ; i++ ) {
+    int x = i%_largeur;
+    int y = i/_largeur;
 
     // r^2 = x^2 + y^2
     int ray_curr = (x-centre[0])*(x-centre[0]) + (y-centre[1])*(y-centre[1]);
@@ -32,7 +32,7 @@ void generate_rectangle(double *down_left, double *up_right, double *mesh) {
 
   for ( i = y_bot ; i <= y_top ; i++ ) {
     for ( j = x_left ; j <= x_right ; j++ ) {
-      mesh[i*largeur + j] = -1;
+      mesh[i*_largeur + j] = -1;
     }
   }
 }
@@ -47,15 +47,15 @@ void save_dist(double* dist) {
   fprintf(out, "Distance table\n");
   fprintf(out, "ASCII\n");
   fprintf(out, "DATASET RECTILINEAR_GRID\n");
-  fprintf(out, "DIMENSIONS %d %d %d\n", largeur, largeur, 1);
-  fprintf(out, "X_COORDINATES %d float\n", largeur);
-  for ( i = 0 ; i < largeur ; i++ ) {
+  fprintf(out, "DIMENSIONS %d %d %d\n", _largeur, _largeur, 1);
+  fprintf(out, "X_COORDINATES %d float\n", _largeur);
+  for ( i = 0 ; i < _largeur ; i++ ) {
     fprintf(out, "%d ", i);
   }
   fprintf(out, "\n");
 
-  fprintf(out, "Y_COORDINATES %d float\n", largeur);
-  for ( i = 0 ; i < largeur ; i++ ) {
+  fprintf(out, "Y_COORDINATES %d float\n", _largeur);
+  for ( i = 0 ; i < _largeur ; i++ ) {
     fprintf(out, "%d ", i);
   }
   fprintf(out, "\n");
@@ -63,12 +63,12 @@ void save_dist(double* dist) {
   fprintf(out, "Z_COORDINATES %d float\n", 1);
   fprintf(out, "%d\n", 0);
 
-  fprintf(out, "POINT_DATA %d\n", largeur*largeur);
+  fprintf(out, "POINT_DATA %d\n", _largeur*_largeur);
   fprintf(out, "SCALARS Distance float %d\n", 1);
   fprintf(out, "LOOKUP_TABLE default\n");
-  for ( i = 0 ; i < largeur ; i++ ) {
-    for ( j = 0 ; j < largeur ; j++ ) {
-      fprintf(out, "%f\n", dist[j + largeur*i]);
+  for ( i = 0 ; i < _largeur ; i++ ) {
+    for ( j = 0 ; j < _largeur ; j++ ) {
+      fprintf(out, "%f\n", dist[j + _largeur*i]);
     } // end for j: -> columns
   } // end for i: \/ rows
   fclose(out);
@@ -87,7 +87,7 @@ void save_path(double* dist, pt arrivee, pt* path) {
 
   fprintf(out, "POINTS %d float\n", (int)dist[arrivee]);
   for ( i = 0 ; i < dist[arrivee] ; i++ ) {
-    fprintf(out, "%d %d %d\n", path[i]%largeur, path[i]/largeur, 0);
+    fprintf(out, "%d %d %d\n", path[i]%_largeur, path[i]/_largeur, 0);
   }
   fprintf(out, "\n");
 
@@ -106,7 +106,7 @@ void save_path(double* dist, pt arrivee, pt* path) {
 }
 
 
-// Saves distance array as vtk file
+// Saves obstacle array as vtk file
 void save_mesh(double* mesh) {
   FILE *out = fopen("obstacles.vtk", "w");
   int i, j;
@@ -115,15 +115,15 @@ void save_mesh(double* mesh) {
   fprintf(out, "Distance table\n");
   fprintf(out, "ASCII\n");
   fprintf(out, "DATASET RECTILINEAR_GRID\n");
-  fprintf(out, "DIMENSIONS %d %d %d\n", largeur, largeur, 1);
-  fprintf(out, "X_COORDINATES %d float\n", largeur);
-  for ( i = 0 ; i < largeur ; i++ ) {
+  fprintf(out, "DIMENSIONS %d %d %d\n", _largeur, _largeur, 1);
+  fprintf(out, "X_COORDINATES %d float\n", _largeur);
+  for ( i = 0 ; i < _largeur ; i++ ) {
     fprintf(out, "%d ", i);
   }
   fprintf(out, "\n");
 
-  fprintf(out, "Y_COORDINATES %d float\n", largeur);
-  for ( i = 0 ; i < largeur ; i++ ) {
+  fprintf(out, "Y_COORDINATES %d float\n", _largeur);
+  for ( i = 0 ; i < _largeur ; i++ ) {
     fprintf(out, "%d ", i);
   }
   fprintf(out, "\n");
@@ -131,12 +131,12 @@ void save_mesh(double* mesh) {
   fprintf(out, "Z_COORDINATES %d float\n", 1);
   fprintf(out, "%d\n", 0);
 
-  fprintf(out, "POINT_DATA %d\n", largeur*largeur);
+  fprintf(out, "POINT_DATA %d\n", _largeur*_largeur);
   fprintf(out, "SCALARS Distance float %d\n", 1);
   fprintf(out, "LOOKUP_TABLE default\n");
-  for ( i = 0 ; i < largeur ; i++ ) {
-    for ( j = 0 ; j < largeur ; j++ ) {
-      fprintf(out, "%f\n", mesh[j + largeur*i]);
+  for ( i = 0 ; i < _largeur ; i++ ) {
+    for ( j = 0 ; j < _largeur ; j++ ) {
+      fprintf(out, "%f\n", mesh[j + _largeur*i]);
     } // end for j: -> columns
   } // end for i: \/ rows
   fclose(out);
