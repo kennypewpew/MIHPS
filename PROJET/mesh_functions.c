@@ -39,8 +39,8 @@ void generate_rectangle(double *down_left, double *up_right, double *mesh) {
 
 
 // Saves distance array as vtk file
-void save_dist(double* dist) {
-  FILE *out = fopen("distance.vtk", "w");
+void save_dist(double* dist, char *file) {
+  FILE *out = fopen(file, "w");
   int i, j;
 
   fprintf(out, "# vtk DataFile Version 3.0\n");
@@ -76,8 +76,8 @@ void save_dist(double* dist) {
 
 
 
-void save_path(double* dist, pt arrivee, pt* path) {
-  FILE *out = fopen("path.vtk", "w");
+void save_path(double* dist, pt arrivee, pt* path, char *file) {
+  FILE *out = fopen(file, "w");
   int i, j;
 
   fprintf(out, "# vtk DataFile Version 3.0\n");
@@ -107,8 +107,8 @@ void save_path(double* dist, pt arrivee, pt* path) {
 
 
 // Saves obstacle array as vtk file
-void save_mesh(double* mesh) {
-  FILE *out = fopen("obstacles.vtk", "w");
+void save_mesh(double* mesh, char *file) {
+  FILE *out = fopen(file, "w");
   int i, j;
 
   fprintf(out, "# vtk DataFile Version 3.0\n");
