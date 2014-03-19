@@ -22,10 +22,10 @@ int main(){
 		printf("%d\t", (int)dist[i]);
 	}	
 	printf("\n");
-        save_dist(dist);
+        save_dist(dist, "distance.vtk");
 	
 	pt* chemin = court_chemin_bis(dist, fin);
-	save_path(dist, fin, chemin);
+	save_path(dist, fin, chemin, "path.vtk");
 	
 	printf("\n");
 	for(i=0; i< dist[fin]; i++)

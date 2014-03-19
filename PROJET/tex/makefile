@@ -1,6 +1,6 @@
 CC=pdflatex
-READ=mupdf
+RD=mupdf
 
 all:
-	$(CC) rapport.tex
-	$(READ) rapport.pdf
+	$(CC) report.tex
+	$(RD) report.pdf &

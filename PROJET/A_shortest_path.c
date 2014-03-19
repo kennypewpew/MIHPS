@@ -102,11 +102,9 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 		if ( liste[j] == voisin[i] ) { repeated = 1; }
 	      }
 		if ( repeated == 0 ) { liste[n_liste++] = voisin[i]; }
-	      /* NO DISTANCE COMPARISON CHECK */
-		/* unlike djikstra, this actually is an issue here 
-		   -- fix by setting distance to [lowest of set neighbors(of point being updated)] + 1 */
 	    } // end for: neighbors
-	  
+
+	    /* update neighbors' distances to min(neighbor's neighbors)+1 */
 	      n_voisin = find_voisin(current, voisin, mesh);
 	      for(i=0; i<n_voisin; i++) {
 		//if(dist[voisin[i]] ==-1){ dist[voisin[i]] = dist[current] + 1; }
@@ -122,10 +120,7 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 		    }// end if: distance is minimal
 		  }// end for: neighbor's neighbors
 		  dist[voisin[i]] = min_dist + 1;
-
 		}// end if: neighbor's distance needs setting
-
-
 	      } // end for: voisins
 
 	      /* NOTE: This make mesh nonreusable! */
@@ -231,7 +226,7 @@ double* A_tab_distance(double* mesh, pt depart, pt arrivee){
 	      } // end for: add neighbors to list
 	      if ( added > 0 ) {
 		current = liste[a_traiter++];
-		//duplicates += added-1;
+		duplicates += added-1;
 	      }
 	      else { max_diamond_size++; 
 		//printf("Diamond enlarged to %d, i_cand = %d, min_cand = %d\n", max_diamond_size, i_cand, min_cand);

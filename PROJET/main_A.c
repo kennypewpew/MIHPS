@@ -3,31 +3,31 @@
 #include "shortest_path.h"
 #include "A_shortest_path.h"
 
-int _largeur = 20;
+int _largeur = 100;
 
 int main(){
 	int i;
 	pt debut = 0;//3*_largeur+3;
-	pt fin = _largeur/2 +1;
-	//pt fin = (_largeur-1)*_largeur -1;
+	//pt fin = _largeur/2 +1;
+	pt fin = (_largeur-1)*_largeur -1;
 	double* mesh = init_tab_mesh();
-	obstacle(mesh);
-	//double bottom_left[2] = { 4, 3 };
-	//double top_right[2] = { 6, 7 };
-        //generate_rectangle(bottom_left, top_right, mesh);
+	//obstacle(mesh);
+	double bottom_left[2] = { 4, 3 };
+	double top_right[2] = { 6, 7 };
+        generate_rectangle(bottom_left, top_right, mesh);
 
-	double bottomleft[2] = { 3, 4 };
-	double topright[2] = { 7, 6 };
+	//double bottomleft[2] = { 3, 4 };
+	//double topright[2] = { 7, 6 };
         //generate_rectangle(bottomleft, topright, mesh);
 
-	save_mesh(mesh);
+	save_mesh(mesh, "obstacle.vtk");
 
 	double* dist = A_tab_distance(mesh, debut, fin);
 
-	save_dist(dist);
+	save_dist(dist, "distance.vtk");
 
 	pt* chemin = court_chemin_bis(dist, fin);
-	save_path(dist, fin, chemin);
+	save_path(dist, fin, chemin, "path.vtk");
 	
 	free(chemin);
 	free(mesh);

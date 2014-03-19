@@ -1,10 +1,10 @@
 CC=gcc
-MAIN=shortest_path.c
-FCTN=mesh_functions.c
+MAIN=main_djik.c
+LIB=mesh_functions.c shortest_path.c
 IFLAGS = -I./
 
 all:
-	$(CC) $(MAIN) $(FCTN) $(IFLAGS) -o djikstra
+	$(CC) $(MAIN) $(LIB) $(IFLAGS) -o djikstra
 
 clean:
 	rm djikstra
