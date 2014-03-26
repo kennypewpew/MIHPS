@@ -65,28 +65,27 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 	pt current = depart; // Current position within list[]
 	pt voisin[4]; // Array containing list of neighbors
 	int n_voisin; // Number of valid neighbors to check
-	//while(a_traiter <= n_liste){ /* Changed while to treat whole domain */
 	int iteration;
 	int steps;
 	int next_steps = 1;
-	for ( iteration = 0 ; iteration <= 5/*n_liste*/ ; iteration++ ) {
+	int finished = 0;
+	for ( iteration = 1 ; !finished /*iteration <= 5/*n_liste*/ ; iteration++ ) {
 	  steps = next_steps;
 	  next_steps = 0;
+	  //printf("%d steps: dist = %d\n", steps, iteration);
 	  for ( j = 0 ; j < steps ; j++ ) {
 		n_voisin = find_voisin(current, voisin, mesh);
-		next_steps += n_voisin;
 		for(i=0; i<n_voisin; i++)
-		        // If not obstacle && distance has not been checked yet,
-		        // set neighbor's distance to current's + 1,
-		        // add neighbors to search queue
 			if(dist[voisin[i]] ==-1){
-				dist[voisin[i]] = dist[current] + 1;
+			  dist[voisin[i]] = iteration;
 				liste[n_liste++] = voisin[i];
-				/* NO DISTANCE COMPARISON CHECK */
+				next_steps++;
 			}
-		current = liste[a_traiter++]; // Increment position in list[]
-	  }
-	}	
+		current = liste[a_traiter++];
+		/* Break is ugly. Eventually replace with global comm */
+		if ( a_traiter > n_liste ) { finished = 1; break; }
+	  } // end for: steps in iteration
+	} // end for: iteration
 	free(liste);
 	return dist;
 }
