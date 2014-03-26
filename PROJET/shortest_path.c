@@ -55,7 +55,7 @@ int find_voisin(pt current, pt* voisin, double* mesh){
 
 // Create and fill/calculate distance table
 double* tab_distance(double* mesh, pt depart, pt arrivee){
-        int i;
+  int i,j;
 	int fin = _largeur*_largeur;
 	double* dist = init_tab_dist(); // Create initialised distance array
 	dist[depart] = 0;
@@ -65,9 +65,16 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 	pt current = depart; // Current position within list[]
 	pt voisin[4]; // Array containing list of neighbors
 	int n_voisin; // Number of valid neighbors to check
-	while(a_traiter <= n_liste){ /* Changed while to treat whole domain */
+	//while(a_traiter <= n_liste){ /* Changed while to treat whole domain */
+	int iteration;
+	int steps;
+	int next_steps = 1;
+	for ( iteration = 0 ; iteration <= 5/*n_liste*/ ; iteration++ ) {
+	  steps = next_steps;
+	  next_steps = 0;
+	  for ( j = 0 ; j < steps ; j++ ) {
 		n_voisin = find_voisin(current, voisin, mesh);
-		
+		next_steps += n_voisin;
 		for(i=0; i<n_voisin; i++)
 		        // If not obstacle && distance has not been checked yet,
 		        // set neighbor's distance to current's + 1,
@@ -78,6 +85,7 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 				/* NO DISTANCE COMPARISON CHECK */
 			}
 		current = liste[a_traiter++]; // Increment position in list[]
+	  }
 	}	
 	free(liste);
 	return dist;
