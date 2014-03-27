@@ -2,6 +2,7 @@
 #include "stdio.h"
 #include "mesh_functions.h"
 #include "shortest_path.h"
+#include "omp.h"
 
 extern int _largeur;
 
@@ -59,33 +60,111 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 	int fin = _largeur*_largeur;
 	double* dist = init_tab_dist(); // Create initialised distance array
 	dist[depart] = 0;
-	pt* liste = malloc(fin*sizeof(pt)); // Points in order to be checked
 	int a_traiter = 0; // Positition in list[]
-	int n_liste = 0; // Number of valid points in list[]
-	pt current = depart; // Current position within list[]
+
+	pt current; // Current position within list[]
 	pt voisin[4]; // Array containing list of neighbors
 	int n_voisin; // Number of valid neighbors to check
 	int iteration;
 	int steps;
-	int next_steps = 1;
 	int finished = 0;
-	for ( iteration = 1 ; !finished /*iteration <= 5/*n_liste*/ ; iteration++ ) {
-	  steps = next_steps;
-	  next_steps = 0;
-	  //printf("%d steps: dist = %d\n", steps, iteration);
+
+	/* Initialize so it works without openmp */
+	int rank = 0;
+	int nproc = 1;
+	nproc = omp_get_max_threads();
+
+	int n_liste[nproc+1]; // Number of valid points in list[]
+
+	pt** liste = malloc((nproc+1)*sizeof(pt*));
+	int *next_steps = malloc((nproc+1)*sizeof(int)); // would int** be better use of first touch allocation??
+	next_steps[nproc] = 1;
+	for ( i = 0 ; i <= nproc ; i++ ) {
+	  liste[i] = malloc(fin*sizeof(pt));
+	  n_liste[i] = 0;
+	}
+	liste[nproc][n_liste[nproc]++] = depart;
+
+	/** Sequential initialization ( until parallel is worthwhile ) **/
+	for ( iteration = 1 ; iteration < 10 /*!finished && next_steps < nproc*/ ; iteration++ ) {
+	  steps = next_steps[nproc];
+	  next_steps[nproc] = 0;
+	  printf("%d steps: dist = %d\n", steps, iteration);
 	  for ( j = 0 ; j < steps ; j++ ) {
+		current = liste[nproc][a_traiter++];
 		n_voisin = find_voisin(current, voisin, mesh);
 		for(i=0; i<n_voisin; i++)
 			if(dist[voisin[i]] ==-1){
 			  dist[voisin[i]] = iteration;
-				liste[n_liste++] = voisin[i];
-				next_steps++;
+				liste[nproc][n_liste[nproc]++] = voisin[i];
+				next_steps[nproc]++;
 			}
-		current = liste[a_traiter++];
-		/* Break is ugly. Eventually replace with global comm */
-		if ( a_traiter > n_liste ) { finished = 1; break; }
 	  } // end for: steps in iteration
-	} // end for: iteration
+	  if ( a_traiter > n_liste[nproc] ) { finished = 1; }
+	  printf("Completed %d of %d\n", a_traiter, n_liste);
+	} // end for: iterations
+
+	/** Partition the frontier **/
+	int split = next_steps[nproc];
+	int a_old = a_traiter;
+	int thread_max = nproc;
+
+#pragma omp parallel							\
+  default(none)								\
+  shared(split,a_old,fin,mesh,dist,liste,next_steps,thread_max,n_liste)	\
+  private(iteration,rank,a_traiter,current,voisin,n_voisin,		\
+	  steps,i,j,finished,nproc)
+	{
+	rank = omp_get_thread_num();
+	nproc = omp_get_num_threads();
+	int start = rank*split/nproc;
+	int end = (rank+1)*split/nproc;
+	n_liste[rank] = next_steps[rank] = end - start;
+	for ( i = 0 ; i < next_steps[rank] ; i++ )
+	  liste[rank][i] = liste[thread_max][a_old+i+start];
+	a_traiter = 0;
+	printf("Rank %d of %d treating %d to %d\n", rank, nproc, start, end);
+
+#pragma omp barrier
+
+	for ( iteration ;  iteration < fin ; iteration++ ) {
+	  steps = next_steps[rank];
+	  next_steps[rank] = 0;
+	  printf("%d steps: dist = %d\n", steps, iteration);
+	  for ( j = 0 ; j < steps ; j++ ) {
+		current = liste[rank][a_traiter++];
+		n_voisin = find_voisin(current, voisin, mesh);
+		for(i=0; i<n_voisin; i++)
+			if(dist[voisin[i]] ==-1){
+			  dist[voisin[i]] = iteration;
+				liste[rank][n_liste[rank]++] = voisin[i];
+				next_steps[rank]++;
+			}
+	  } // end for: steps in iteration
+	  if ( a_traiter >= n_liste[rank] ) { finished = 1; }
+	  printf("Completed %d of %d\n", a_traiter, n_liste[rank]);
+
+	  /* BORDER CONTROL */
+	  for ( j = n_liste[rank]-next_steps[rank] ; j < n_liste[rank] ; j++ ) {
+	    for ( i = n_liste[(rank+1)%nproc] - next_steps[(rank+1)%nproc] ;
+		  i < n_liste[(rank+1)%nproc] ; i++ ) {
+	      if ( liste[rank][j] == liste[(rank+1)%nproc][i] ) {
+		int k;
+		for ( k = j ; k < n_liste[rank] ; k++ ) {
+		  liste[rank][k] = liste[rank][k+1];
+		}
+		n_liste[rank]--; // removed element
+		i = n_liste[(rank+1)%nproc]; // exit i-loop
+	      } // end if: match
+	    } // end for: elements of neighbor's next
+	  } // end for: elements of next
+	  /* END BORDER CONTROL */
+
+	} // end for: iterations
+	/* Check performance differences between barrier and 'update to min' */
+
+	}
+
 	free(liste);
 	return dist;
 }

@@ -16,21 +16,11 @@ int main(){
 	//generate_rectangle(bottom_left, top_right, mesh);
 
 	double* dist = tab_distance(mesh, debut, fin);
-	printf("\n");
-	for(i=0; i<_largeur*_largeur;i++){
-		if(i%_largeur == 0)	printf("\n");
-		printf("%d\t", (int)dist[i]);
-	}	
-	printf("\n");
-        save_dist(dist, "distance.vtk");
 	
 	pt* chemin = court_chemin_bis(dist, fin);
+	save_dist(dist, "distance.vtk");
 	save_path(dist, fin, chemin, "path.vtk");
 	
-	printf("\n");
-	for(i=0; i< dist[fin]; i++)
-		printf("%d \t %d \n", chemin[i]/_largeur, chemin[i]%_largeur);
-
 	free(mesh);
 	free(dist);
 
