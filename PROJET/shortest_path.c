@@ -54,6 +54,114 @@ int find_voisin(pt current, pt* voisin, double* mesh){
 	return i;
 }
 
+/** If element is in list of the process to right, remove from own list **/
+void BorderControl(int rank, int nproc, int *n_liste, int **liste, int *next_steps) {
+  int i, j, k;
+
+  int left = (rank-1+nproc)%nproc;
+  int right = (rank+1)%nproc;
+
+  for ( j = n_liste[rank]-next_steps[rank] ; j < n_liste[rank] ; j++ ) {
+    for ( i = n_liste[right] - next_steps[right] ;
+	  i < n_liste[right] ; i++ ) {
+      if ( liste[rank][j] == liste[right][i] ) {
+	for ( k = j ; k < n_liste[rank] ; k++ ) {
+	  liste[rank][k] = liste[rank][k+1];
+	}
+	n_liste[rank]--; // removed element
+	i = n_liste[right]; // exit i-loop
+      } // end if: match
+    } // end for: elements of neighbor's next
+  } // end for: elements of next
+} // end function
+
+
+void StealFromLeft(int rank, int nproc, int **liste, int *n_liste, int *next_steps) {
+  int i;
+
+  int left = (rank-1+nproc)%nproc;
+
+  // Steal half of difference between self and neighbor
+  int stealFromLeft = (next_steps[left]-next_steps[rank])/2;
+  
+  // Calculate start and end points
+  int leftStart = n_liste[left] - stealFromLeft;
+
+  //printf("Rank %d stealing %d from left: %d vs %d vs %d\n",
+  //rank, stealFromLeft, next_steps[left], next_steps[rank], next_steps[right]);
+
+  int count = 0;
+  for ( i = leftStart ; i < n_liste[left] ; i++ ) {
+    liste[rank][n_liste[rank]++] = liste[left][i];
+    count++;
+  }
+  next_steps[rank] += count;
+  next_steps[left] -= count;
+  n_liste[left] -= count;
+
+  printf("Rank %d stole %d from %d: %d vs %d\n",
+	 rank, count, left, n_liste[rank], n_liste[left]);
+
+}
+
+void StealFromRight(int rank, int nproc, int **liste, int *n_liste, int *next_steps) {
+  int i;
+
+  int left = (rank+1)%nproc;
+
+  // Steal half of difference between self and neighbor
+  int stealFromLeft = (next_steps[left]-next_steps[rank])/2;
+  
+  // Calculate start and end points
+  int leftStart = n_liste[left] - stealFromLeft;
+
+  //printf("Rank %d stealing %d from left: %d vs %d vs %d\n",
+  //rank, stealFromLeft, next_steps[left], next_steps[rank], next_steps[right]);
+
+  int count = 0;
+  for ( i = leftStart ; i < n_liste[left] ; i++ ) {
+    liste[rank][n_liste[rank]++] = liste[left][i];
+    count++;
+  }
+  next_steps[rank] += count;
+  next_steps[left] -= count;
+  n_liste[left] -= count;
+
+  printf("Rank %d stole %d from %d: %d vs %d\n",
+	 rank, count, left, n_liste[rank], n_liste[left]);
+
+}
+
+/*
+void StealFromRight(int rank, int nproc, int **liste, int *n_liste, int *next_steps) {
+  int i;
+
+  int right = (rank+1)%nproc;
+
+  // Steal half of difference between self and neighbor
+  int stealFromRight = (next_steps[right]-next_steps[rank])/2;
+  
+  // Calculate start and end points
+  int rightStart = n_liste[right] - next_steps[right];
+  int rightEnd = rightStart + stealFromRight;
+
+  //printf("Rank %d stealing %d from right: %d - %d\n",
+  //rank, stealFromRight, rightStart, rightEnd);
+
+  int count = 0;
+  for ( i = rightStart ; i < rightEnd ; i++ ) {
+    liste[rank][n_liste[rank]++] = liste[right][i];
+    liste[right][i] = liste[right][n_liste[right]-i+rightStart-1];
+    count++;
+  }
+  next_steps[rank] += count;
+  next_steps[right] -= count;
+  n_liste[right] -= count;
+
+}
+
+*/
+
 // Create and fill/calculate distance table
 double* tab_distance(double* mesh, pt depart, pt arrivee){
   int i,j;
@@ -85,11 +193,11 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 	}
 	liste[nproc][n_liste[nproc]++] = depart;
 
-	/** Sequential initialization ( until parallel is worthwhile ) **/
+	/** Sequential initialization ( until load balancing is finished ) **/
 	for ( iteration = 1 ; iteration < 10 /*!finished && next_steps < nproc*/ ; iteration++ ) {
 	  steps = next_steps[nproc];
 	  next_steps[nproc] = 0;
-	  printf("%d steps: dist = %d\n", steps, iteration);
+	  //printf("%d steps: dist = %d\n", steps, iteration);
 	  for ( j = 0 ; j < steps ; j++ ) {
 		current = liste[nproc][a_traiter++];
 		n_voisin = find_voisin(current, voisin, mesh);
@@ -100,19 +208,21 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 				next_steps[nproc]++;
 			}
 	  } // end for: steps in iteration
-	  if ( a_traiter > n_liste[nproc] ) { finished = 1; }
-	  printf("Completed %d of %d\n", a_traiter, n_liste);
+	  //if ( a_traiter > n_liste[nproc] ) { finished = 1; }
+	  //printf("Completed %d of %d\n", a_traiter, n_liste[nproc]);
 	} // end for: iterations
 
 	/** Partition the frontier **/
 	int split = next_steps[nproc];
 	int a_old = a_traiter;
 	int thread_max = nproc;
+	int NotFinished = 1;
 
 #pragma omp parallel							\
   default(none)								\
-  shared(split,a_old,fin,mesh,dist,liste,next_steps,thread_max,n_liste)	\
-  private(iteration,rank,a_traiter,current,voisin,n_voisin,		\
+  shared(iteration,split,a_old,fin,mesh,dist,				\
+	 liste,next_steps,thread_max,n_liste,NotFinished)				\
+  private(rank,a_traiter,current,voisin,n_voisin,			\
 	  steps,i,j,finished,nproc)
 	{
 	rank = omp_get_thread_num();
@@ -127,10 +237,11 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 
 #pragma omp barrier
 
-	for ( iteration ;  iteration < fin ; iteration++ ) {
+	//for ( iteration ; iteration < fin  ; iteration ) {
+	while ( NotFinished ) {
 	  steps = next_steps[rank];
 	  next_steps[rank] = 0;
-	  printf("%d steps: dist = %d\n", steps, iteration);
+	  //printf("Rank %d - %d steps: dist = %d\n", rank, steps, iteration);
 	  for ( j = 0 ; j < steps ; j++ ) {
 		current = liste[rank][a_traiter++];
 		n_voisin = find_voisin(current, voisin, mesh);
@@ -142,27 +253,56 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 			}
 	  } // end for: steps in iteration
 	  if ( a_traiter >= n_liste[rank] ) { finished = 1; }
-	  printf("Completed %d of %d\n", a_traiter, n_liste[rank]);
+	  //printf("Rank %d - Completed %d of %d\n", rank, a_traiter, n_liste[rank]);
+
+
+	  /* barrier, then increment */
+	  /* there's probably a better way to do this */
+#pragma omp barrier
+#pragma omp single
+	  {
+	    iteration++;
+	  }
 
 	  /* BORDER CONTROL */
-	  for ( j = n_liste[rank]-next_steps[rank] ; j < n_liste[rank] ; j++ ) {
-	    for ( i = n_liste[(rank+1)%nproc] - next_steps[(rank+1)%nproc] ;
-		  i < n_liste[(rank+1)%nproc] ; i++ ) {
-	      if ( liste[rank][j] == liste[(rank+1)%nproc][i] ) {
-		int k;
-		for ( k = j ; k < n_liste[rank] ; k++ ) {
-		  liste[rank][k] = liste[rank][k+1];
-		}
-		n_liste[rank]--; // removed element
-		i = n_liste[(rank+1)%nproc]; // exit i-loop
-	      } // end if: match
-	    } // end for: elements of neighbor's next
-	  } // end for: elements of next
+	  /** Turns out this is actually entirely  unnecessary. 
+	      Keeping for later anyway, since it may be useful(MPI, etc) **/
+	  //BorderControl(rank, nproc, n_liste, liste, next_steps)
 	  /* END BORDER CONTROL */
 
+	  /* LOAD BALANCE */
+	  /** Not yet functional */
+	  /** Pairs up procs, then deals with last proc if odd
+	        - avoids concurency
+	      Any way to avoid using so many barriers? **/
+
+	  if ( rank % 2 && !(rank == nproc-1) )
+	    StealFromLeft(rank, nproc, liste, n_liste, next_steps);
+	  if ( !(rank%2) && !(rank == nproc-1) )
+	    StealFromRight(rank, nproc, liste, n_liste, next_steps);
+#pragma omp barrier
+	  if ( rank % 2 && !(rank == nproc-1) )
+	    StealFromRight(rank, nproc, liste, n_liste, next_steps);
+	  if ( !(rank%2) && !(rank == nproc-1) )
+	    StealFromLeft(rank, nproc, liste, n_liste, next_steps);
+#pragma omp barrier
+	  if ( rank == nproc-1 ) {
+	    StealFromRight(rank, nproc, liste, n_liste, next_steps);
+	    StealFromLeft(rank, nproc, liste, n_liste, next_steps);
+	}
+#pragma omp barrier
+
+	  /* END LOAD BALANCE */
+#pragma omp single
+	  {
+	  NotFinished = 0;
+	  for ( i = 0 ; i < nproc ; i++ )
+	    NotFinished += next_steps[i];
+	  }
 	} // end for: iterations
 	/* Check performance differences between barrier and 'update to min' */
 
+#pragma omp barrier
 	}
 
 	free(liste);
