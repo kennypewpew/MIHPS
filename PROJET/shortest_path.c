@@ -83,7 +83,8 @@ void StealFromLeft(int rank, int nproc, int **liste, int *n_liste, int *next_ste
 
   // Steal half of difference between self and neighbor
   int stealFromLeft = (next_steps[left]-next_steps[rank])/2;
-  
+
+  if ( stealFromLeft > 0 ) {
   // Calculate start and end points
   int leftStart = n_liste[left] - stealFromLeft;
 
@@ -101,6 +102,7 @@ void StealFromLeft(int rank, int nproc, int **liste, int *n_liste, int *next_ste
 
   printf("Rank %d stole %d from %d: %d vs %d\n",
 	 rank, count, left, n_liste[rank], n_liste[left]);
+  }
 
 }
 
@@ -142,7 +144,8 @@ void StealFromRight(int rank, int nproc, int **liste, int *n_liste, int *next_st
 
   // Steal half of difference between self and neighbor
   int stealFromRight = (next_steps[right]-next_steps[rank])/2;
-  
+
+  if ( stealFromRight > 0 ) {
   // Calculate start and end points
   int rightStart = n_liste[right] - next_steps[right];
   int rightEnd = rightStart + stealFromRight;
@@ -159,6 +162,7 @@ void StealFromRight(int rank, int nproc, int **liste, int *n_liste, int *next_st
   next_steps[rank] += count;
   next_steps[right] -= count;
   n_liste[right] -= count;
+  }
 
 }
 
@@ -280,13 +284,11 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 
 	  if ( rank % 2 && !(rank == nproc-1) )
 	    StealFromLeft(rank, nproc, liste, n_liste, next_steps);
-#pragma omp barrier
 	  if ( !(rank%2) && !(rank == nproc-1) )
 	    StealFromRight(rank, nproc, liste, n_liste, next_steps);
 #pragma omp barrier
 	  if ( rank % 2 && !(rank == nproc-1) )
 	    StealFromRight(rank, nproc, liste, n_liste, next_steps);
-#pragma omp barrier
 	  if ( !(rank%2) && !(rank == nproc-1) )
 	    StealFromLeft(rank, nproc, liste, n_liste, next_steps);
 #pragma omp barrier
