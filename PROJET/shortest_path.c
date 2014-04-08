@@ -104,6 +104,8 @@ void StealFromLeft(int rank, int nproc, int **liste, int *n_liste, int *next_ste
 
 }
 
+/** For debugging purposes, this version is the same as stealfromleft **/
+/*
 void StealFromRight(int rank, int nproc, int **liste, int *n_liste, int *next_steps) {
   int i;
 
@@ -131,8 +133,8 @@ void StealFromRight(int rank, int nproc, int **liste, int *n_liste, int *next_st
 	 rank, count, left, n_liste[rank], n_liste[left]);
 
 }
+*/
 
-/*
 void StealFromRight(int rank, int nproc, int **liste, int *n_liste, int *next_steps) {
   int i;
 
@@ -160,7 +162,7 @@ void StealFromRight(int rank, int nproc, int **liste, int *n_liste, int *next_st
 
 }
 
-*/
+
 
 // Create and fill/calculate distance table
 double* tab_distance(double* mesh, pt depart, pt arrivee){
@@ -278,11 +280,13 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 
 	  if ( rank % 2 && !(rank == nproc-1) )
 	    StealFromLeft(rank, nproc, liste, n_liste, next_steps);
+#pragma omp barrier
 	  if ( !(rank%2) && !(rank == nproc-1) )
 	    StealFromRight(rank, nproc, liste, n_liste, next_steps);
 #pragma omp barrier
 	  if ( rank % 2 && !(rank == nproc-1) )
 	    StealFromRight(rank, nproc, liste, n_liste, next_steps);
+#pragma omp barrier
 	  if ( !(rank%2) && !(rank == nproc-1) )
 	    StealFromLeft(rank, nproc, liste, n_liste, next_steps);
 #pragma omp barrier
