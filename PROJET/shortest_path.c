@@ -243,18 +243,20 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 
 #pragma omp parallel							\
   default(none)								\
-  shared(iteration,split,a_old,fin,mesh,dist,				\
+  shared(split,a_old,fin,mesh,dist,				\
 	 liste,next_steps,thread_max,n_liste,NotFinished)				\
   private(rank,a_traiter,current,voisin,n_voisin,			\
-	  steps,i,j,finished,nproc)
+	  steps,i,j,finished,nproc,iteration)
 	{
 	rank = omp_get_thread_num();
 	nproc = omp_get_num_threads();
 	int start = rank*split/nproc;
 	int end = (rank+1)*split/nproc;
 	n_liste[rank] = next_steps[rank] = end - start;
+	/** Sequential initialization
 	for ( i = 0 ; i < next_steps[rank] ; i++ )
 	  liste[rank][i] = liste[thread_max][a_old+i+start];
+	**/
 	a_traiter = 0;
 	//printf("Rank %d of %d treating %d to %d\n", rank, nproc, start, end);
 
@@ -277,14 +279,8 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 	  } // end for: steps in iteration
 	  //printf("Rank %d - Completed %d of %d\n", rank, a_traiter, n_liste[rank]);
 
-
-	  /* barrier, then increment */
-	  /* there's probably a better way to do this */
-#pragma omp barrier
-#pragma omp single
-	  {
-	    iteration++;
-	  }
+	  /* Increment iteration(local) */
+	  iteration++;
 
 	  /* BORDER CONTROL */
 	  /** Turns out this is actually entirely  unnecessary. 
@@ -299,7 +295,7 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 	      Any way to avoid using so many barriers?
 	        - Locally, no. Globally, yes: use local barrier (pthreads?)
 	  **/
-
+#pragma omp barrier
 	  if ( rank % 2 && !(rank == nproc-1) )
 	    StealFromLeft(rank, nproc, liste, n_liste, next_steps);
 	  if ( !(rank%2) && !(rank == nproc-1) )
