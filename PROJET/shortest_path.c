@@ -84,6 +84,8 @@ void StealFromLeft(int rank, int nproc, int **liste, int *n_liste, int *next_ste
   // Steal half of difference between self and neighbor
   int stealFromLeft = (next_steps[left]-next_steps[rank])/2;
 
+  /** This if fixes concurrency issues, but I feel like they shouldn't have
+        happened in the first place **/
   if ( stealFromLeft > 0 ) {
   // Calculate start and end points
   int leftStart = n_liste[left] - stealFromLeft;
@@ -92,16 +94,23 @@ void StealFromLeft(int rank, int nproc, int **liste, int *n_liste, int *next_ste
   //rank, stealFromLeft, next_steps[left], next_steps[rank], next_steps[right]);
 
   int count = 0;
+  int a_traiter = n_liste[rank] - next_steps[rank];
+  // Shift array to make room at start
+  for ( i = n_liste[rank]-1 ; i >= a_traiter ; i-- ) {
+    liste[rank][i+stealFromLeft] = liste[rank][i];
+  }
   for ( i = leftStart ; i < n_liste[left] ; i++ ) {
-    liste[rank][n_liste[rank]++] = liste[left][i];
+    liste[rank][a_traiter+i-leftStart] = liste[left][i];
     count++;
   }
+
   next_steps[rank] += count;
+  n_liste[rank] += count;
   next_steps[left] -= count;
   n_liste[left] -= count;
 
-  printf("Rank %d stole %d from %d: %d vs %d\n",
-	 rank, count, left, n_liste[rank], n_liste[left]);
+  //printf("Rank %d stole %d from %d: %d vs %d\n",
+  //rank, count, left, n_liste[rank], n_liste[left]);
   }
 
 }
@@ -156,9 +165,14 @@ void StealFromRight(int rank, int nproc, int **liste, int *n_liste, int *next_st
   int count = 0;
   for ( i = rightStart ; i < rightEnd ; i++ ) {
     liste[rank][n_liste[rank]++] = liste[right][i];
-    liste[right][i] = liste[right][n_liste[right]-i+rightStart-1];
+    //liste[right][i] = liste[right][n_liste[right]-i+rightStart-1];
     count++;
   }
+  int right_traiter = n_liste[right] - next_steps[right];
+  for ( i = right_traiter ; i < n_liste[right] - stealFromRight ; i++ ) {
+    liste[right][i] = liste[right][i+stealFromRight];
+  }
+
   next_steps[rank] += count;
   next_steps[right] -= count;
   n_liste[right] -= count;
@@ -199,8 +213,10 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 	}
 	liste[nproc][n_liste[nproc]++] = depart;
 
+	iteration = 1;
 	/** Sequential initialization ( until load balancing is finished ) **/
-	for ( iteration = 1 ; iteration < 10 /*!finished && next_steps < nproc*/ ; iteration++ ) {
+	/*
+	for ( iteration = 1 ; iteration < 10 ; iteration++ ) {
 	  steps = next_steps[nproc];
 	  next_steps[nproc] = 0;
 	  //printf("%d steps: dist = %d\n", steps, iteration);
@@ -217,6 +233,7 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 	  //if ( a_traiter > n_liste[nproc] ) { finished = 1; }
 	  //printf("Completed %d of %d\n", a_traiter, n_liste[nproc]);
 	} // end for: iterations
+*/
 
 	/** Partition the frontier **/
 	int split = next_steps[nproc];
@@ -239,7 +256,7 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 	for ( i = 0 ; i < next_steps[rank] ; i++ )
 	  liste[rank][i] = liste[thread_max][a_old+i+start];
 	a_traiter = 0;
-	printf("Rank %d of %d treating %d to %d\n", rank, nproc, start, end);
+	//printf("Rank %d of %d treating %d to %d\n", rank, nproc, start, end);
 
 #pragma omp barrier
 
@@ -258,7 +275,6 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 				next_steps[rank]++;
 			}
 	  } // end for: steps in iteration
-	  if ( a_traiter >= n_liste[rank] ) { finished = 1; }
 	  //printf("Rank %d - Completed %d of %d\n", rank, a_traiter, n_liste[rank]);
 
 
@@ -279,8 +295,10 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 	  /* LOAD BALANCE */
 	  /** Not yet functional */
 	  /** Pairs up procs, then deals with last proc if odd
-	        - avoids concurency
-	      Any way to avoid using so many barriers? **/
+	        in order to avoid concurency
+	      Any way to avoid using so many barriers?
+	        - Locally, no. Globally, yes: use local barrier (pthreads?)
+	  **/
 
 	  if ( rank % 2 && !(rank == nproc-1) )
 	    StealFromLeft(rank, nproc, liste, n_liste, next_steps);
@@ -309,6 +327,7 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 	/* Check performance differences between barrier and 'update to min' */
 
 #pragma omp barrier
+	printf("Rank %d treated %d nodes\n", rank, n_liste[rank]);
 	}
 
 	free(liste);
