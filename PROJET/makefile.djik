@@ -1,7 +1,7 @@
 CC=gcc
 MAIN=main_djik.c
 LIB=mesh_functions.c shortest_path.c
-IFLAGS = -I./
+IFLAGS = -I./ -fopenmp
 
 all:
 	$(CC) $(MAIN) $(LIB) $(IFLAGS) -o djikstra
