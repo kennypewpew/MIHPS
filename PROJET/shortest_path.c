@@ -202,15 +202,19 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 	int nproc = 1;
 	nproc = omp_get_max_threads();
 
+	/** Having this shared is probably causing false sharing **/
 	int n_liste[nproc+1]; // Number of valid points in list[]
 
 	pt** liste = malloc((nproc+1)*sizeof(pt*));
 	int *next_steps = malloc((nproc+1)*sizeof(int)); // would int** be better use of first touch allocation??
 	next_steps[nproc] = 1;
+
+	liste[nproc] = malloc(fin*sizeof(pt));
 	for ( i = 0 ; i <= nproc ; i++ ) {
 	  liste[i] = malloc(fin*sizeof(pt));
 	  n_liste[i] = 0;
 	}
+
 	liste[nproc][n_liste[nproc]++] = depart;
 
 	iteration = 1;
@@ -250,8 +254,10 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 	{
 	rank = omp_get_thread_num();
 	nproc = omp_get_num_threads();
+	printf("Rank %d of %d\n", rank, nproc);
 	int start = rank*split/nproc;
 	int end = (rank+1)*split/nproc;
+#pragma omp barrier
 	n_liste[rank] = next_steps[rank] = end - start;
 	/** Sequential initialization
 	for ( i = 0 ; i < next_steps[rank] ; i++ )
@@ -263,6 +269,7 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 #pragma omp barrier
 
 	//for ( iteration ; iteration < fin  ; iteration ) {
+	iteration = 0;
 	while ( NotFinished ) {
 	  steps = next_steps[rank];
 	  next_steps[rank] = 0;
@@ -285,7 +292,7 @@ double* tab_distance(double* mesh, pt depart, pt arrivee){
 	  /* BORDER CONTROL */
 	  /** Turns out this is actually entirely  unnecessary. 
 	      Keeping for later anyway, since it may be useful(MPI, etc) **/
-	  //BorderControl(rank, nproc, n_liste, liste, next_steps)
+	  //BorderControl(rank, nproc, n_liste, liste, next_steps);
 	  /* END BORDER CONTROL */
 
 	  /* LOAD BALANCE */
